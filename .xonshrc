@@ -1,0 +1,491 @@
+# -*- coding: utf-8 -*-
+# -*-mode: python; flycheck-mode: nil -*-
+
+import warnings
+warnings.filterwarnings("ignore",category=DeprecationWarning)
+from xonsh.tools import unthreadable, uncapturable
+
+
+import builtins
+import argparse
+import os
+from os.path import basename
+
+$THREAD_SUBPROCS = True
+$XONSH_CAPTURE_ALWAYS = False
+$ENABLE_ASYNC_PROMPT = True
+
+$COMPLETION_IN_THREAD=True
+
+
+if "WT_SESSION" in ${...} or ${...}.get("TERM_PROGRAM") =="vscode":
+    $INTENSIFY_COLORS_ON_WIN = False
+
+
+if "WT_SESSION" in ${...}:
+    $PROMPT_FIELDS['prompt_end'] = "🐌"
+    #$PROMPT_FIELDS['prompt_end'] = '🐌 💖 '
+    if $PWD == r"C:\WINDOWS\system32":
+        ![cd ~]
+
+
+############
+# SETTINGS #
+############
+
+
+#$PATH.append(r'C:\Program Files\AnyBody Technology\AnyBody.7.2')
+$LS_COLORS='rs=0:di=01;36:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:'
+
+
+#xontrib load free_cwd
+#xontrib load mpl
+xontrib load coreutils free_cwd
+
+
+$READABLE_TRACE_STRIP_PATH_ENV=True
+$READABLE_TRACE_REVERSE=True
+# $XONSH_SHOW_TRACEBACK = True
+$SUPPRESS_BRANCH_TIMEOUT_MESSAGE = True
+#$WIN_UNICODE_CONSOLE = True
+#$UPDATE_COMPLETIONS_ON_KEYPRES = True
+$AUTO_PUSHD = True
+
+$XONSH_HISTORY_SIZE = (10000, 'commands')
+$XONSH_HISTORY_BACKEND = 'sqlite'
+#$XONSH_HISTORY_BACKEND = 'json'
+#$HISTCONTROL = 'ignoredups'
+
+
+###########
+# Aliases #
+###########
+
+
+#aliases['rm'] = 'rm -i'
+#aliases['cp'] = 'cp -i'
+#aliases['mv'] = 'mv -i'
+
+#aliases['grep'] = 'grep -i --color=always'
+#aliases['mkdir'] = 'mkdir -p'
+# aliases['cdpwd'] = 'cd `pwd`'
+aliases['d'] = ['cmd', '/c', 'dir']
+#aliases['npp'] = ['C:/Program Files (x86)/Notepad++/notepad++.exe',  '-multiInst','-nosession']
+#['ls'] = ['ls.exe','--show-control-chars', '-C', '--color=auto', '-X']
+
+
+aliases['ll'] = ['ls', '-lh', '-F', '--color=auto', '-vX']
+aliases['gl'] = ['git', 'log', '--oneline', '--all' ,'--graph' ,'--decorate' , '--color']
+aliases['unpushed'] = ['git', 'log', '--branches', '--not', '--remotes', '--simplify-by-decoration', '--decorate', '--oneline']
+aliases['e.'] = ['explorer', '.' ]
+aliases['cdgit'] = ['cd', '~/Documents/github/' ]
+#aliases['pwd'] = ['$PWD']
+
+
+aliases['cd..'] = ['cd', '..' ]
+aliases['cdd'] = ['cd', '~/Documents']
+aliases['cdx'] = ['cd', '~/Documents/xonsh']
+aliases['xrc'] = ['code', '~/.xonshrc']
+
+
+aliases['g'] = 'git status -sb'
+aliases['gco'] = 'git checkout'
+aliases['gp'] = ['git', 'pull']
+aliases['gf'] = ['git', 'fetch']
+
+
+# Typos
+aliases['it'] = 'git'
+aliases['gi'] = 'git'
+aliases['tit'] = 'git'
+aliases['sl'] = 'ls'
+
+aliases['last'] = ['git', 'log', '--pretty=format:"%C(yellow)%h%x09%Creset%an%x09%x09%s"', '--decorate', '-10']
+aliases['graph'] = "git log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr)%Creset' --abbrev-commit --all"
+aliases['graph2'] = "git log --graph --all --format=format:'%C(bold yellow)%h%C(reset) - %C(bold cyan)%aD%C(reset) %C(bold green)(%ar)%C(reset)%C(bold yellow)%d%C(reset)%n'' %C(white)%s%C(reset) %C(bold white)- %an%C(reset)' --abbrev-commit"
+
+@uncapturable
+@unthreadable
+def _ssh_forum():
+    ssh -i ~/.ssh/discourse_rsa discourse@anyscriptforum.northeurope.cloudapp.azure.com
+
+aliases['ssh-forum'] = _ssh_forum
+del _ssh_forum
+
+# THINGS I TEST
+#$FORCE_POSIX_PATHS = True  # Fixes this bug cd 'New Folder/'
+# $VI_MODE = True
+
+
+from functools import wraps
+from xonsh.contexts import Functor
+
+class CreateAlias(Functor):
+
+    def __init__(self, alias_name, args=(), kwargs=None):
+        super().__init__(args=args, kwargs=kwargs, rtn='')
+        if self.kwargs is None:
+            self.kwargs = []
+        kw_names = [e[0] for e in self.kwargs]
+        if 'stdin' not in kw_names:
+            self.kwargs.append(('stdin', None))
+        if 'stderr' not in kw_names:
+            self.kwargs.append(('stderr', None))
+        if 'stdout' not in kw_names:
+            self.kwargs.append(('stdout', None))
+        self.alias_name = alias_name
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        res = super().__exit__(exc_type, exc_value, traceback)
+        if not res:
+            return res
+        builtins.aliases[self.alias_name] = self.func
+        return res
+
+with! CreateAlias('sha1', args=['args']):
+    import hashlib
+    sha = hashlib.sha1()
+    with open(args[0], 'rb') as f:
+        sha.update(f.read())
+    print(sha.hexdigest())
+
+
+
+def show_style(stylename='default'):
+    from xonsh.tools import print_color
+    from xonsh.xonfig import _tok_colors
+
+    oldstyle, $XONSH_COLOR_STYLE = $XONSH_COLOR_STYLE, stylename
+    s =  builtins.__xonsh_shell__.shell.styler.styles
+    tok_list = _tok_colors(s,100)
+    tok_list = [
+        (t, text.strip()+' '+s[t]+'\n')
+        for t, text in tok_list
+        if 'noinherit' not in s[t]
+    ]
+    print_color(tok_list, end='\n')
+    $XONSH_COLOR_STYLE  = oldstyle
+
+def _sha(args, stdin=None):
+    """ Calculate hash of file """
+    parser = argparse.ArgumentParser('sha', description="Calc hash sum of file")
+    parser.add_argument('file', nargs='?', help='File to be hashed')
+    parser.add_argument('-a', '--algorithm', default='sha256', help='The hash algorithm used')
+    ns = parser.parse_args(args)
+    import hashlib
+    try:
+        sha_algo = getattr(hashlib, ns.algorithm)()
+    except AttributeError:
+        print(f'No such algorithm. Chose from:\n{hashlib.algorithms_available}')
+        return
+    with open(args[0], 'rb') as f:
+        sha_algo.update(f.read())
+    val = sha_algo.hexdigest()
+    $(echo.exe -n @(val.strip()) | clip)
+    print(f'{val} *{ns.file} ({ns.algorithm})')
+
+aliases['sha'] = _sha
+del _sha
+
+
+def _devmode(args, stdin=None):
+    if len(args) == 1 and args[0] == 'off':
+        try:
+            $PROMPT, $TITLE, $RIGHT_PROMPT = (
+                $_ORG_PROMPT,$_ORG_TITLE,$_ORG_RIGHT_PROMPT)
+            clear
+            $XONSH_SHOW_TRACEBACK = True
+        except:
+          pass
+    else:
+        $_ORG_PROMPT,$_ORG_TITLE,$_ORG_RIGHT_PROMPT = (
+             $PROMPT, $TITLE, $RIGHT_PROMPT)
+        
+        distro_name =  ${...}.get('WSL_DISTRO_NAME', 'sea')
+
+        $PROMPT = ('{env_name:{}}{BOLD_GREEN}snail@' + f'{distro_name}' +
+                   '{BOLD_BLUE} {cwd}{branch_color}{curr_branch: {}} ' +
+                   '{BOLD_BLUE}\n{prompt_end}{RESET} ')
+        $TITLE = ('{current_job:{} | }snail@' + f'{distro_name}:' +
+                  '{cwd} | xonsh')
+        $RIGHT_PROMPT = ''
+        $XONSH_SHOW_TRACEBACK = False
+
+aliases['devmode'] = _devmode
+del _devmode
+
+devmode on
+
+
+
+
+
+
+#####################
+# UTILITY FUNCTIONS #
+#####################
+
+def _gif_encode(args, stdin=None):
+    desc = "Encode a video as an animated gif file"
+    parser = argparse.ArgumentParser('gif-encode', description=desc)
+    parser.add_argument('infile', help='The movie to convert to gif')
+    parser.add_argument('-o', '--outfile', nargs='?', default=None,
+                        help='The output filename')
+    parser.add_argument('--width', nargs='?', type=int,  default='-1',
+                        help='The width of the animated gif')
+    parser.add_argument('--height', nargs='?', type=int,  default='-1',
+                        help='The width of the animated gif')
+    parser.add_argument('--fps', nargs='?', type=int,  default='30',
+                        help='Framerate of the anaimated gif')
+    parser.add_argument('--free-aspect', action='store_true', dest='free_aspect',
+                        help='Allow the width/height settings to change the aspect ratio.')
+    ns = parser.parse_args(args)
+    import tempfile
+    import os
+    filters = 'fps={},scale=w={}:h={}'.format(ns.fps, ns.width, ns.height)
+    if not ns.free_aspect:
+        filters +=':force_original_aspect_ratio=decrease'
+    filters += ':flags=lanczos'
+    if ns.outfile is None:
+        ns.outfile = os.path.splitext(ns.infile)[0] + '.gif'
+    with tempfile.TemporaryDirectory() as tmp:
+        palette=os.path.join(tmp, 'palette.png')
+        ![ffmpeg.exe -v warning -i @(ns.infile) -vf @(filters+',palettegen=stats_mode=diff') -y @(palette)]
+        ![ffmpeg.exe -v warning -i @(ns.infile) -i @(palette) -lavfi @(filters+' [x]; [x][1:v] paletteuse') -y @( ns.outfile)]
+
+
+aliases['gif-encode'] = _gif_encode
+del _gif_encode
+
+def _anyscript2python(args, stdin=None):
+    import re
+    from anypytools import tools
+    tools.dump_pattern = re.compile(r'\w+\s?=.+$')
+    out = tools.parse_anybodycon_output(args[0])
+    gc = globals()
+    out.pop('WARNING',None)
+    out.pop('ERROR',None)
+    gc.update(out)
+
+aliases['any2py'] = _anyscript2python
+del _anyscript2python
+
+def _pytho2anyscript(args, stdin=None):
+    import re
+    from anypytools.tools import array2anyscript
+    gc = globals()
+    var = gc.get(args[0], None)
+    if var is not None:
+        print(array2anyscript(var))
+    else:
+        print(args[0] + ' could not be found')
+
+
+aliases['py2any'] = _pytho2anyscript
+del _pytho2anyscript
+
+
+
+def _docx2rst(args, stdin=None):
+    import re
+    desc = "Convert docx to rst"
+    parser = argparse.ArgumentParser('docx2rst', description=desc)
+    parser.add_argument('file', help='The docx file to convert to rst')
+    ns = parser.parse_args(args)
+    fn = os.path.splitext(ns.file)[0]
+    rstfile = fn+'.rst'
+    ![pandoc -S -f docx @(ns.file) --track-changes=accept --extract-media @('_static/'+fn) -t rst -o @(rstfile)]
+    if os.path.exists('_static/'+ fn+ '/media'):
+        ![mv -f @('_static/'+ fn+ '/media/*') -t @('_static/'+fn)]
+        ![rm -rf @('_static/'+fn+'/media')]
+    with open(rstfile, encoding='utf-8') as file:
+        filedata = file.read()
+    filedata = filedata.replace('_static/'+fn+'/media', '_static/'+fn)
+    filedata = re.sub(r'^\|\s', ' ' , filedata, flags=re.MULTILINE)
+    indent = False
+    lines = []
+    for line in filedata.splitlines():
+        if '<ANYSCRIPT>' in line:
+            indent = True
+        if '</ANYSCRIPT>' in line:
+            indent = False
+        line = ' '*4 + line if indent else line
+        lines.append(line)
+    filedata = "\n".join(lines)
+    filedata = re.sub(r'^\s*<ANYSCRIPT>.?$', '\n.. code-block:: AnyScriptDoc\n' , filedata, flags=re.MULTILINE)
+    filedata = re.sub(r'^.?</ANYSCRIPT>.?$', '' , filedata, flags=re.MULTILINE)
+    filedata = re.sub(r"(`.+[\n]?.+<Downloads/.+>`)(\_\_)", r":download:\g<1>", filedata)
+    filedata = re.sub(r"(`.+[\n]?.+<.+.)(\.docx)(>`)(\_\_)", r":doc:\g<1>\g<3>", filedata)
+    with open(rstfile, 'w', encoding='utf-8') as file:
+        file.write(filedata)
+    print('Converted to rst: ' + ns.file)
+
+aliases['docx2rst'] = locals().pop('_docx2rst')
+
+
+
+
+def _fix_docx_issues(args, stdin=None):
+    """ This fixes docx issues with word by
+        first saving them as strict docx format,
+        and then back as docx
+    """
+    import win32com.client, pythoncom, time
+    if len(args):
+        filenames = [os.path.abspath(f) for f in args]
+    else:
+        filenames = [os.path.abspath(f) for f in `[^~].*docx`]
+    pythoncom.CoInitializeEx(pythoncom.COINIT_APARTMENTTHREADED)
+    msword = win32com.client.gencache.EnsureDispatch('Word.Application')
+    try:
+        for fn in filenames:
+            # Save documents as stric xml to rectify any problems
+            try:
+                mydoc = msword.Documents.Open(fn)
+                mydoc.SaveAs2(FileName=fn,
+                   FileFormat=win32com.client.constants.wdFormatStrictOpenXMLDocument,
+                   CompatibilityMode=win32com.client.constants.wdCurrent )
+            finally:
+                mydoc.Close()
+        for fn in filenames:
+            # Then save again as normal docx
+            try:
+                mydoc = msword.Documents.Open(fn)
+                mydoc.SaveAs2(FileName=fn,
+                   FileFormat=win32com.client.constants.wdFormatDocumentDefault,
+                   CompatibilityMode=win32com.client.constants.wdCurrent )
+                print('Converted: '+fn)
+            finally:
+                mydoc.Close()
+
+    finally:
+        msword.Quit()
+        pythoncom.CoUninitialize()
+
+aliases['fix_docx_issues'] = locals().pop('_fix_docx_issues')
+
+
+
+def _fix_video(args, stdin=None):
+    desc = "Make video compatible"
+    parser = argparse.ArgumentParser('fix-video', description=desc)
+    parser.add_argument('file', help='The video to preocess')
+    ns = parser.parse_args(args)
+    fn, ext = os.path.splitext(ns.file)
+    outfile = fn + '_converted' + ext
+
+    ![ffmpeg -i @(ns.file)  -c:v libx264 -crf 10 -profile:v baseline -level 3.0 -pix_fmt yuv420p -c:a aac -ac 2 -strict experimental -b:a 128k -movflags faststart @(outfile) ]
+
+aliases['fix-video'] = locals().pop('_fix_video')
+
+
+
+
+def _any_parse(args, name = None, stdin=None):
+    from ast import literal_eval
+    import numpy
+    if isinstance(args, list):
+        s = args[0]
+    else:
+        s = args
+    var,_,val = s.partition('=')
+    if name is None:
+        name = var.rpartition('.')[-1].strip()
+    val = val.replace('{','[').replace('}',']').replace(';','')
+    val = val.replace('\n','').replace(' ','')
+    val = literal_eval(val)
+    val = numpy.array(val)
+    basename = name
+    cnt = 1
+    while name in __xonsh__.ctx:
+        name = f'{basename}_{str(cnt)}'
+        cnt += 1
+    print(f'Added {name} {str(val.shape)} to workspace')
+    __xonsh__.ctx[name] = val
+
+#aliases['any'] = locals().pop('_anyscript_import')
+aliases['any'] = _any_parse
+
+
+
+## Dotfiles setup.
+# git init --bare ~/.dotfiles
+# git --git-dir=~/.dotfiles/ --work-tree=~ config --local status.showUntrackedFiles no
+#
+#
+# TODO: Setup on a new computer.
+# git --git-dir=~/.dotfiles/ --work-tree=~ config fetch origin
+# git --git-dir=~/.dotfiles/ --work-tree=~ config reset --hard origin/master
+#
+# Maybe use $GIT_DIR and $GIT_WORK_TREE instead
+
+aliases['dot']='git --git-dir=~/.dotfiles/ --work-tree=~'
+__xonsh__.commands_cache.threadable_predictors['dot'] = lambda x: False
+
+
+#$XONSH_STDERR_PREFIX = "{BACKGROUND_RED}"
+
+#$XONSH_STDERR_POSTFIX = "{RESET}"
+
+
+
+
+
+
+###############  pwned check #####################
+
+
+
+def lookup_pwned_api(pword):
+    """Returns hash and number of times password was seen in pwned database.
+    Args:
+        pwd: password to check
+    Returns:
+        A (sha1, count) tuple
+    """
+    import hashlib 
+    import requests
+    sha1pwd = hashlib.sha1(pword.encode('utf-8')).hexdigest().upper()
+    head, tail = sha1pwd[:5], sha1pwd[5:]
+    url = 'https://api.pwnedpasswords.com/range/' + head
+    res = requests.get(url)
+    if res.status_code != 200:
+        raise RuntimeError('Error fetching "{}": {}'.format(
+            url, res.status_code))
+    hashes = (line.split(':') for line in res.text.splitlines())
+    count = next((int(count) for t, count in hashes if t == tail), 0)
+    return sha1pwd, count
+
+
+
+def _pwned(args, stdin=None):
+    desc = "Search pwned database"
+    from prompt_toolkit import prompt
+    pwd = prompt('Enter passowrd: ', is_password=True)
+
+    sha1, count = lookup_pwned_api(pwd)
+    if count: 
+        print(f"Password was found  {count} times (hash: {sha1})")
+    else:
+        print(f"Password wasn't found")
+
+
+aliases['pwned'] = locals().pop('_pwned')
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+import sys as _sys
+from types import ModuleType as _ModuleType
+_mod = _ModuleType("xontrib.conda",
+                   r"Autogenerated from $(/C/Users/mel/mambaforge/Scripts/conda.exe shell.xonsh hook)")
+__xonsh__.execer.exec($(r"C:/Users/mel/mambaforge/Scripts/conda.exe" "shell.xonsh" "hook"),
+                      glbs=_mod.__dict__,
+                      filename=r"$(C:/Users/mel/mambaforge/Scripts/conda.exe shell.xonsh hook)")
+_sys.modules["xontrib.conda"] = _mod
+del _sys, _mod, _ModuleType
+# <<< conda initialize <<<
+
+
+
+
+
