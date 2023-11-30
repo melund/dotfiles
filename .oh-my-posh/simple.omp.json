@@ -5,9 +5,15 @@
       "alignment": "left",
       "segments": [
         {
+          "foreground": "p:os",
+          "style": "plain",
+          "template": "{{.Icon}} ",
+          "type": "os"
+        },
+        {
           "foreground": "#45F1C2",
           "style": "plain",
-          "template": "\ueb99 {{ .UserName }} on",
+          "template": "{{ .UserName }}: ",
           "type": "session"
         },
         {
