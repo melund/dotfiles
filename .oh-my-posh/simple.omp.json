@@ -5,9 +5,9 @@
       "alignment": "left",
       "segments": [
         {
-          "foreground": "p:os",
+          "foreground": "#3A86FF",
           "style": "plain",
-          "template": "{{.Icon}} ",
+          "template": "{{ if .WSL }}WSL at {{ end }}{{.Icon}} ",
           "type": "os"
         },
         {
