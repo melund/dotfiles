@@ -1,9 +1,9 @@
 {
   "$schema": "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json",
   "transient_prompt": {
-      "background": "transparent",
-      "foreground": "#ffffff",
-      "template": "{{ .Shell }}> "
+      "background": "{{ .Segments.Prompt.Background }}",
+      "foreground": "{{ .Segments.Prompt.Foreground }}",
+      "template": "{{ .Segments.Prompt.Template }}> "
   },
   "blocks": [
     {
